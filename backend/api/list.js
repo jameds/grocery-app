@@ -12,14 +12,17 @@ router.post('/', (req, res) => {
 
   const table = req.body.flatMap(i =>
     hasKeys(i, ['id', 'name', 'quantity']) ?
-    [[String(i.name), i.quantity]] : [])
+    [[String(i.name), i.quantity, i.metric]] : [])
 
   const maxName = table.reduce(
     (acc, [name]) => Math.max(acc, name.length), 0)
 
   const tableAlignedText = table.map(
-    ([name, quantity]) =>
-    `  ${name.padEnd(maxName)} ${quantity}`).join('\n')
+    ([name, quantity, metric]) => [
+      '  ', name.padEnd(maxName),
+      '    ', quantity,
+      ' ', metric,
+    ].join('')).join('\n')
 
   const d = new Date()
 
