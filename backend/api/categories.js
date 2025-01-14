@@ -14,18 +14,33 @@ router.post('/', (req, res) => {
     return res.status(400)
       .json({ error: 'wrong format' })
 
-  const { lastInsertRowid: id } = db.prepare(
-    `insert or replace into categories
-    (name, priority) values (?, ?)`)
-    .run(req.body.name, req.body.priority)
+  const id = (db.transaction((data) => {
+    db.prepare(
+      `insert or replace into categories
+      (id, name, priority) values
+      ((select id from categories where name=@name),
+      @name, @priority)`)
+      .run(data)
+
+    return db.prepare(
+      'select id from categories where name=?')
+      .pluck()
+      .get(data.name)
+  }))(req.body)
 
   res.json({ id })
 })
 
-router.delete('/:id', (req, res) => {
+router.put('/:id', (req, res) => {
+  if (!hasKeys(req.body, ['name', 'priority']))
+    return res.status(400)
+      .json({ error: 'wrong format' })
+
   const { changes } = db.prepare(
-    'delete from categories where id=?')
-    .run(req.params.id)
+    `update categories
+    set name = @name, priority = @priority
+    where id=@id`)
+    .run({ ...req.body, ...req.params })
 
   if (changes)
     res.json({})

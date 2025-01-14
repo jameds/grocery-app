@@ -111,7 +111,7 @@ body {
   font: 1.5rem sans-serif;
   height: 4rem;
   transition: background .5s;
-  flex: 2 1 auto;
+  flex: 2 0 auto;
 }
 
 .submit-button:hover {
@@ -129,7 +129,7 @@ body {
   font: 1.5rem sans-serif;
   height: 4rem;
   transition: background .5s;
-  flex: 1 1 auto;
+  flex: 1 0 auto;
 }
 
 .delete-button:hover {

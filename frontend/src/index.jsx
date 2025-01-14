@@ -13,13 +13,9 @@ const router = createBrowserRouter([
     path: '/',
     element: <App />,
     loader: async () => {
-      const {
-        data: categories } = await api.get('categories')
-
       return {
         items: (await api.get('items')).data,
-        categories: Object.fromEntries(
-          categories.map((d) => [d.name, d])),
+        categories: (await api.get('categories')).data,
       }
     },
     hydrateFallbackElement: <></>,
@@ -51,10 +47,10 @@ const router = createBrowserRouter([
     },
   },
   {
-    path: '/categories',
-    action: async ({ request }) => {
+    path: '/categories/:id',
+    action: async ({ request, params }) => {
       const data = await request.formData()
-      api.post('/categories',
+      api.put(`/categories/${params.id}`,
         Object.fromEntries(data.entries()))
     },
   },

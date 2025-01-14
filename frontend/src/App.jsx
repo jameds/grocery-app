@@ -55,7 +55,7 @@ function ListCategory({
   const ref = useRef()
   return <div
     ref={ref}
-    key={data.category}
+    key={data.category.id}
     className="list-category"
   >
     <div
@@ -67,7 +67,7 @@ function ListCategory({
         className="list-banner-label button"
         onClick={() => categoryOnClick(data.category)}
       >
-        {data.category} <GoPencil style={{
+        {data.category.name} <GoPencil style={{
           marginLeft: '0.5em' }} />
       </button>
       <button
@@ -77,7 +77,7 @@ function ListCategory({
             setExpand(null)
           else
           {
-            setExpand(data.category)
+            setExpand(data.category.id)
             ref.current.scrollIntoView()
           }
         }}
@@ -130,7 +130,7 @@ function EditItemOverlay({
       <input
         name="category"
         type="text"
-        defaultValue={data.category}
+        defaultValue={categories[data.category]?.name}
         list="edit-item-category-options"
         autoCapitalize="words"
       />
@@ -168,10 +168,11 @@ function EditItemOverlay({
     </div>
 
     <datalist id="edit-item-category-options">
-      {categories.map(k => <option
-        key={k}
-        value={k}
-      />)}
+      {Object.values(categories).map(({ name }) => (
+        <option
+          key={name}
+          value={name}
+        />))}
     </datalist>
     <datalist id="edit-item-category-metrics">
       {metrics.map(k => <option
@@ -187,8 +188,8 @@ function EditCategoryOverlay({ data }) {
 
   return <Form
     className="form"
-    action="/categories"
-    method="post"
+    action={`/categories/${data.id}`}
+    method="put"
     navigate={false}
     onSubmit={() => navigate(-1)}
   >
@@ -263,7 +264,7 @@ const collator = new Intl.Collator('en')
 export function App() {
   const {
     items,
-    categories: definedCategories,
+    categories: rawCategories,
   } = useLoaderData()
 
   const [memory, setMemory] = useState(() => {
@@ -284,17 +285,29 @@ export function App() {
       },
   }), [selected, memory])
 
-  const categories = useMemo(() => {
-    const implicitCategories =
-      items.flatMap(({ category }) => category || [])
-
-    return [...new Set(implicitCategories)
-      .union(new Set(Object.keys(definedCategories)))]
-  }, [items])
+  const categories = useMemo(() =>
+    Object.fromEntries(
+      rawCategories.map((cat) => [cat.id, cat])),
+    [rawCategories])
 
   const metrics = useMemo(() =>
     items.flatMap(({ metric }) => metric || []),
     [items])
+
+  const sortedItems = useMemo(() => {
+    const grouped =
+      Object.groupBy(items, (i) => i.category)
+
+    return Object.entries(grouped)
+      .map(([categoryId, items]) => ({
+          category: categories[categoryId],
+          items: items.sort(({ name: a }, { name: b }) =>
+            collator.compare(a, b)),
+      }))
+      .sort(({ category: a }, { category: b }) =>
+        (a.priority - b.priority) ||
+        collator.compare(a.name, b.name))
+  }, [items, categories])
 
   const submit = useSubmit()
   const navigate = useNavigate()
@@ -311,9 +324,10 @@ export function App() {
       return
 
     submit(
-      items.filter(({ id }) => memory[id])
-      .map(i =>
-        ({ ...i, quantity: memory[i.id] })),
+      sortedItems.flatMap(({ items }) =>
+        items.filter(({ id }) => memory[id]))
+        .map(i =>
+          ({ ...i, quantity: memory[i.id] })),
       {
         action: '/list',
         method: 'post',
@@ -347,27 +361,10 @@ export function App() {
     navigate()
   }, [])
 
-  const categoryOnClick = useCallback((name) => {
-    setOverlay(<EditCategoryOverlay
-      data={{ ...definedCategories[name], name }} />)
+  const categoryOnClick = useCallback((data) => {
+    setOverlay(<EditCategoryOverlay data={data} />)
     navigate()
-  }, [definedCategories])
-
-  const sortedItems = useMemo(() => {
-    const grouped =
-      Object.groupBy(items, (i) => i.category)
-
-    return Object.entries(grouped)
-      .map(([category, items]) => ({
-          category,
-          items: items.sort(({ name: a }, { name: b }) =>
-            collator.compare(a, b)),
-      }))
-      .sort(({ category: a }, { category: b }) =>
-        (definedCategories[a]?.priority -
-        definedCategories[b]?.priority) ||
-        collator.compare(a, b))
-  }, [items])
+  }, [])
 
   return <>
     <div id="dial-container">
@@ -380,10 +377,10 @@ export function App() {
             selected={selected}
             itemOnClick={itemOnClick}
             categoryOnClick={categoryOnClick}
-            active={expand == data.category}
-            setExpand={(name) => {
+            active={expand == data.category.id}
+            setExpand={(id) => {
               setSelected(null)
-              setExpand(name)
+              setExpand(id)
             }}
           />)}
         </div>

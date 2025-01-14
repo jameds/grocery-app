@@ -13,15 +13,30 @@ router.get('/', (req, res) => {
 })
 
 router.post('/', (req, res) => {
-  if (!hasKeys(req.body, ['name']))
+  if (!hasKeys(req.body, ['name', 'category']))
     return res.status(400)
       .json({ error: 'wrong format' })
 
-  const { lastInsertRowid: id } = db.prepare(
-    `insert or replace into items
-    (name, data) values (?, ?)`)
-    .run(...(({ name, ...data }) =>
-        [name, JSON.stringify(data)])(req.body))
+  const id = (db.transaction(({ name, ...data }) => {
+    db.prepare(
+      `insert or ignore into categories
+      (name) values (?)`)
+      .run(data.category)
+
+    const categoryId = db.prepare(
+      'select id from categories where name=?')
+      .pluck()
+      .get(data.category)
+
+    data.category = categoryId
+
+    const { lastInsertRowid: id } = db.prepare(
+      `insert or replace into items
+      (name, data) values (?, ?)`)
+      .run(name, JSON.stringify(data))
+
+    return id
+  }))(req.body)
 
   res.json({ id })
 })
