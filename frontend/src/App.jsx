@@ -115,6 +115,11 @@ function EditItemOverlay({
     navigate={false}
     onSubmit={() => navigate(-1)}
   >
+    <input
+      name="id"
+      type="hidden"
+      value={data.id}
+    />
     <div className="form-header">{title}</div>
     <div className="form-label-container">
       <span className="form-label">Name</span>

@@ -17,7 +17,7 @@ router.post('/', (req, res) => {
     return res.status(400)
       .json({ error: 'wrong format' })
 
-  const id = (db.transaction(({ name, ...data }) => {
+  const id = (db.transaction(({ name, id, ...data }) => {
     db.prepare(
       `insert or ignore into categories
       (name) values (?)`)
@@ -30,10 +30,12 @@ router.post('/', (req, res) => {
 
     data.category = categoryId
 
-    const { lastInsertRowid: id } = db.prepare(
+    var { lastInsertRowid: id } = db.prepare(
       `insert or replace into items
-      (name, data) values (?, ?)`)
-      .run(name, JSON.stringify(data))
+      (id, name, data) values
+      ((select id from items where id=@id or name=@name),
+      @name, @data)`)
+      .run({ name, id, data: JSON.stringify(data) })
 
     return id
   }))(req.body)
